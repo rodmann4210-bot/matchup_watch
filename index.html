@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Matchup Watch — Batter vs. Pitcher</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0a0a0f;color:#e2e8f0;font-family:'Courier New',monospace;min-height:100vh}
+    .header{background:linear-gradient(180deg,#1a0005,#0a0a0f);border-bottom:2px solid #c41e3a;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo-text{font-size:22px;font-weight:900;letter-spacing:0.2em;color:#f1f5f9}
+    .logo-sub{font-size:8px;color:#6b2130;letter-spacing:0.3em;margin-top:2px}
+    .header-link{font-size:9px;color:#6b2130;text-decoration:none;font-family:monospace;letter-spacing:0.15em}
+    .header-link:hover{color:#c41e3a}
+    .main{padding:24px;max-width:960px;margin:0 auto}
+    .search-panel{background:#0f0f1a;border:1px solid #1e293b;border-radius:10px;padding:24px;margin-bottom:24px}
+    .search-title{font-size:10px;color:#6b2130;letter-spacing:0.3em;margin-bottom:16px}
+    .search-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}
+    @media(max-width:600px){.search-row{grid-template-columns:1fr;}}
+    .search-group{display:flex;flex-direction:column;gap:6px;position:relative}
+    .search-label{font-size:9px;color:#475569;letter-spacing:0.2em}
+    .search-input{background:#060610;border:1px solid #1e293b;border-radius:6px;color:#f1f5f9;font-family:monospace;font-size:14px;padding:10px 12px;outline:none;width:100%;transition:border-color 0.2s}
+    .search-input:focus{border-color:#c41e3a55}
+    .suggestions{position:absolute;top:100%;left:0;right:0;background:#0f0f1a;border:1px solid #1e293b;border-radius:0 0 6px 6px;z-index:10;max-height:180px;overflow-y:auto;display:none}
+    .suggestion{padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #1e293b22}
+    .suggestion:hover{background:#1e293b}
+    .suggestion-name{color:#f1f5f9}
+    .suggestion-meta{font-size:10px;color:#475569;margin-top:2px}
+    .search-btn{background:linear-gradient(135deg,#c41e3a,#8b0000);color:#fff;border:none;border-radius:6px;padding:10px 24px;font-family:monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.1em;white-space:nowrap;height:42px}
+    .search-btn:disabled{background:#1e293b;color:#374151;cursor:not-allowed}
+    .selected-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:#1a0005;border:1px solid #c41e3a44;border-radius:12px;font-size:10px;color:#c41e3a;margin-top:4px}
+    .result-panel{background:#0f0f1a;border:1px solid #1e293b;border-radius:10px;padding:24px;display:none}
+    .matchup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+    .matchup-names{font-size:16px;font-weight:900;color:#f1f5f9;letter-spacing:0.05em}
+    .matchup-names span{color:#c41e3a}
+    .matchup-sub{font-size:9px;color:#475569;margin-top:4px;letter-spacing:0.2em}
+    .savant-link{font-size:9px;color:#475569;text-decoration:none;font-family:monospace}
+    .savant-link:hover{color:#c41e3a}
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin-bottom:20px}
+    .stat-box{background:#060610;border:1px solid #1e293b;border-radius:8px;padding:12px;text-align:center}
+    .stat-val{font-size:26px;font-weight:900;font-family:monospace;color:#f1f5f9;line-height:1}
+    .stat-val.good{color:#4ade80}
+    .stat-val.warn{color:#facc15}
+    .stat-val.bad{color:#f87171}
+    .stat-lbl{font-size:8px;color:#475569;letter-spacing:0.2em;margin-top:4px}
+    .section-label{font-size:8px;color:#6b2130;letter-spacing:0.3em;margin-bottom:10px;margin-top:20px}
+    .statcast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+    .sc-box{background:#060610;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+    .sc-lbl{font-size:9px;color:#475569}
+    .sc-val{font-size:14px;font-weight:900;font-family:monospace;color:#a78bfa}
+    .last5-table{width:100%;border-collapse:collapse;font-size:11px}
+    .last5-table th{text-align:left;padding:6px 10px;color:#475569;font-size:8px;letter-spacing:0.2em;border-bottom:1px solid #1e293b}
+    .last5-table td{padding:8px 10px;border-bottom:1px solid #1e293b11;color:#94a3b8}
+    .event-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;font-weight:700;font-family:monospace}
+    .ev-hit{background:#052e16;color:#4ade80}
+    .ev-hr{background:#1c0a00;color:#fb923c}
+    .ev-k{background:#1c0000;color:#f87171}
+    .ev-bb{background:#1c1400;color:#facc15}
+    .ev-out{background:#1e293b;color:#475569}
+    .no-data{text-align:center;padding:40px;color:#334155;font-size:12px}
+    .loading{text-align:center;padding:30px;color:#475569;font-size:11px;display:none}
+    .error-msg{background:#1c0000;border:1px solid #f8717144;border-radius:6px;padding:12px;color:#f87171;font-size:11px;margin-top:12px;display:none}
+    .seasons-note{font-size:9px;color:#334155;font-family:monospace;margin-top:8px}
+    .footer{margin-top:32px;padding-top:16px;border-top:1px solid #0f172a;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+    .footer-text{font-size:9px;color:#1e293b;letter-spacing:0.15em}
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div style="font-size:28px">⚔️</div>
+    <div>
+      <div class="logo-text">MATCHUP WATCH</div>
+      <div class="logo-sub">BATTER VS. PITCHER · STATCAST DATA · 2015–PRESENT</div>
+    </div>
+  </div>
+  <a class="header-link" href="https://rodmann4210-bot.github.io/cardinals_watch/">↗ CARDINALS WATCH</a>
+</div>
+
+<div class="main">
+
+  <div class="search-panel">
+    <div class="search-title">── PLAYER LOOKUP · TYPE NAME · SELECT FROM LIST</div>
+    <div class="search-row">
+      <div class="search-group">
+        <div class="search-label">BATTER</div>
+        <input class="search-input" id="batterInput" type="text" placeholder="e.g. Goldschmidt" autocomplete="off" oninput="onSearch('batter',this.value)"/>
+        <div class="suggestions" id="batterSugg"></div>
+        <div id="batterTag"></div>
+      </div>
+      <div class="search-group">
+        <div class="search-label">PITCHER</div>
+        <input class="search-input" id="pitcherInput" type="text" placeholder="e.g. Burnes" autocomplete="off" oninput="onSearch('pitcher',this.value)"/>
+        <div class="suggestions" id="pitcherSugg"></div>
+        <div id="pitcherTag"></div>
+      </div>
+      <button class="search-btn" id="matchupBtn" onclick="runMatchup()" disabled>⚔ MATCHUP</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="loading" id="loading">⟳ Fetching Statcast data from Baseball Savant...</div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="matchup-header">
+      <div>
+        <div class="matchup-names" id="matchupNames"></div>
+        <div class="matchup-sub" id="matchupSub"></div>
+      </div>
+      <a class="savant-link" id="savantLink" href="#" target="_blank">↗ View on Baseball Savant</a>
+    </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="section-label">── STATCAST METRICS</div>
+    <div class="statcast-grid" id="statcastGrid"></div>
+
+    <div class="section-label">── LAST 5 PLATE APPEARANCES</div>
+    <div id="last5Wrap"></div>
+
+    <div class="seasons-note" id="seasonsNote"></div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-text">MATCHUP WATCH · DATA VIA BASEBALL SAVANT / MLB STATSAPI · 2015–PRESENT</span>
+  </div>
+
+</div>
+
+<script>
+let selectedBatter = null;
+let selectedPitcher = null;
+let searchTimers = {};
+
+function onSearch(type, val) {
+  clearTimeout(searchTimers[type]);
+  const sugg = document.getElementById(type === 'batter' ? 'batterSugg' : 'pitcherSugg');
+  if (type === 'batter') selectedBatter = null;
+  else selectedPitcher = null;
+  updateBtn();
+  if (val.length < 2) { sugg.style.display = 'none'; return; }
+  searchTimers[type] = setTimeout(() => fetchSuggestions(type, val), 350);
+}
+
+async function fetchSuggestions(type, val) {
+  const sugg = document.getElementById(type === 'batter' ? 'batterSugg' : 'pitcherSugg');
+  try {
+    const r = await fetch(`/api/lookup?name=${encodeURIComponent(val)}`);
+    const j = await r.json();
+    if (!j.ok || !j.people.length) { sugg.style.display = 'none'; return; }
+    sugg.innerHTML = j.people.slice(0, 8).map(p =>
+      `<div class="suggestion" onclick="selectPlayer('${type}',${p.id},'${p.name.replace(/'/g,"\\'")}','${p.position}','${p.team.replace(/'/g,"\\'")}')">
+        <div class="suggestion-name">${p.name}</div>
+        <div class="suggestion-meta">${p.position} · ${p.team}</div>
+      </div>`
+    ).join('');
+    sugg.style.display = 'block';
+  } catch(e) { sugg.style.display = 'none'; }
+}
+
+function selectPlayer(type, id, name, pos, team) {
+  const sugg = document.getElementById(type === 'batter' ? 'batterSugg' : 'pitcherSugg');
+  const input = document.getElementById(type === 'batter' ? 'batterInput' : 'pitcherInput');
+  const tag = document.getElementById(type === 'batter' ? 'batterTag' : 'pitcherTag');
+  input.value = name;
+  sugg.style.display = 'none';
+  tag.innerHTML = `<div class="selected-tag">✓ ${name} · ${pos} · ${team}</div>`;
+  if (type === 'batter') selectedBatter = { id, name };
+  else selectedPitcher = { id, name };
+  updateBtn();
+}
+
+function updateBtn() {
+  document.getElementById('matchupBtn').disabled = !(selectedBatter && selectedPitcher);
+}
+
+function eventTag(ev) {
+  if (!ev) return '<span class="event-tag ev-out">—</span>';
+  if (ev === 'home_run') return '<span class="event-tag ev-hr">HR</span>';
+  if (['single','double','triple'].includes(ev)) return `<span class="event-tag ev-hit">${ev.toUpperCase().substring(0,3)}</span>`;
+  if (ev === 'strikeout') return '<span class="event-tag ev-k">K</span>';
+  if (ev === 'walk') return '<span class="event-tag ev-bb">BB</span>';
+  return `<span class="event-tag ev-out">${ev.replace(/_/g,' ').toUpperCase().substring(0,6)}</span>`;
+}
+
+function colorAvg(val) {
+  const n = parseFloat(val);
+  if (n >= 0.300) return 'good';
+  if (n >= 0.250) return '';
+  return 'bad';
+}
+
+async function runMatchup() {
+  const err = document.getElementById('errorMsg');
+  const loading = document.getElementById('loading');
+  const panel = document.getElementById('resultPanel');
+  err.style.display = 'none';
+  panel.style.display = 'none';
+  loading.style.display = 'block';
+
+  try {
+    const r = await fetch(`/api/matchup?batter_id=${selectedBatter.id}&pitcher_id=${selectedPitcher.id}`);
+    const j = await r.json();
+    loading.style.display = 'none';
+
+    if (!j.ok) throw new Error(j.error || 'Unknown error');
+
+    document.getElementById('matchupNames').innerHTML =
+      `<span>${selectedBatter.name}</span> vs. <span>${selectedPitcher.name}</span>`;
+
+    if (j.pa === 0) {
+      document.getElementById('matchupSub').textContent = 'NO STATCAST DATA FOUND (pre-2015 or no matchup history)';
+      document.getElementById('statsGrid').innerHTML = '<div class="no-data">No plate appearance data found for this matchup.</div>';
+      document.getElementById('statcastGrid').innerHTML = '';
+      document.getElementById('last5Wrap').innerHTML = '';
+      document.getElementById('seasonsNote').textContent = '';
+      document.getElementById('savantLink').href = `https://baseballsavant.mlb.com/player_matchup#batterIds=${selectedBatter.id}&pitcherIds=${selectedPitcher.id}`;
+      panel.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('matchupSub').textContent = `${j.pa} PLATE APPEARANCES · SEASONS: ${j.seasons}`;
+    document.getElementById('savantLink').href = `https://baseballsavant.mlb.com/player_matchup#batterIds=${selectedBatter.id}&pitcherIds=${selectedPitcher.id}`;
+
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-box"><div class="stat-val">${j.pa}</div><div class="stat-lbl">PA</div></div>
+      <div class="stat-box"><div class="stat-val ${colorAvg(j.avg)}">${j.avg}</div><div class="stat-lbl">AVG</div></div>
+      <div class="stat-box"><div class="stat-val ${colorAvg(j.obp)}">${j.obp}</div><div class="stat-lbl">OBP</div></div>
+      <div class="stat-box"><div class="stat-val">${j.slg}</div><div class="stat-lbl">SLG</div></div>
+      <div class="stat-box"><div class="stat-val">${j.ops}</div><div class="stat-lbl">OPS</div></div>
+      <div class="stat-box"><div class="stat-val ${j.hrs > 2 ? 'good' : ''}">${j.hrs}</div><div class="stat-lbl">HR</div></div>
+      <div class="stat-box"><div class="stat-val ${parseFloat(j.kpct) > 30 ? 'bad' : parseFloat(j.kpct) < 15 ? 'good' : ''}">${j.kpct}%</div><div class="stat-lbl">K%</div></div>
+      <div class="stat-box"><div class="stat-val ${parseFloat(j.bbpct) > 12 ? 'good' : ''}">${j.bbpct}%</div><div class="stat-lbl">BB%</div></div>
+    `;
+
+    document.getElementById('statcastGrid').innerHTML = `
+      ${j.avgEV ? `<div class="sc-box"><span class="sc-lbl">AVG EXIT VELO</span><span class="sc-val">${j.avgEV} mph</span></div>` : ''}
+      ${j.hardHit ? `<div class="sc-box"><span class="sc-lbl">HARD HIT %</span><span class="sc-val">${j.hardHit}%</span></div>` : ''}
+      ${j.avgXwoba ? `<div class="sc-box"><span class="sc-lbl">xwOBA</span><span class="sc-val">${j.avgXwoba}</span></div>` : ''}
+      ${(!j.avgEV && !j.hardHit && !j.avgXwoba) ? '<div style="color:#334155;font-size:11px">No Statcast tracking data available for this matchup.</div>' : ''}
+    `;
+
+    if (j.last5 && j.last5.length) {
+      document.getElementById('last5Wrap').innerHTML = `
+        <table class="last5-table">
+          <thead><tr><th>DATE</th><th>RESULT</th><th>DESCRIPTION</th></tr></thead>
+          <tbody>${j.last5.map(ab => `
+            <tr>
+              <td>${ab.date || '—'}</td>
+              <td>${eventTag(ab.event)}</td>
+              <td>${ab.desc || '—'}</td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+    } else {
+      document.getElementById('last5Wrap').innerHTML = '<div class="no-data">No recent at-bat details available.</div>';
+    }
+
+    document.getElementById('seasonsNote').textContent = `* Statcast data available 2015–present`;
+    panel.style.display = 'block';
+
+  } catch(e) {
+    loading.style.display = 'none';
+    err.textContent = '⚠ ' + e.message;
+    err.style.display = 'block';
+  }
+}
+
+// Close suggestions on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-group')) {
+    document.querySelectorAll('.suggestions').forEach(s => s.style.display = 'none');
+  }
+});
+</script>
+</body>
+</html>
